@@ -12,6 +12,7 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
+
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB Connected"))
   .catch((err) => console.error(err));
@@ -20,6 +21,7 @@ mongoose.connect(process.env.MONGO_URI)
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
+  phoneNumber: { type: String, required: true, unique: true },
   creationDate: { type: Date, default: Date.now },
   updationDate: { type: Date, default: Date.now },
   role: { type: Number, default: 1 },
@@ -43,9 +45,16 @@ const generateToken = (userId) => {
 
 app.post("/register", async (req, res) => {
   try {
-    const { username, password, role, userPrivilege } = req.body;
-    const user = new User({ username, password, role, userPrivilege });
+    const { username, phoneNumber, password, role, userPrivilege } = req.body;
+
+    const existingUser = await User.findOne({ phoneNumber });
+    if (existingUser) {
+      return res.status(400).json({ message: "Phone number already in use" });
+    }
+
+    const user = new User({ username, phoneNumber, password, role, userPrivilege });
     await user.save();
+
     const token = generateToken(user._id);
     res.status(201).json({ message: "User created successfully", token });
   } catch (error) {
@@ -56,23 +65,27 @@ app.post("/register", async (req, res) => {
 
 app.post("/login", async (req, res) => {
   try {
-    const { username, password } = req.body;
-    const user = await User.findOne({ username });
+    const { phoneNumber } = req.body;
+
+    // Check if phoneNumber is provided
+    if (!phoneNumber) {
+      return res.status(400).json({ message: "Phone number is required" });
+    }
+
+    // Find user by phone number
+    const user = await User.findOne({ phoneNumber });
     if (!user) {
       return res.status(400).json({ message: "User not found" });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Invalid credentials" });
-    }
-
+    // Generate JWT token (No password required)
     const token = generateToken(user._id);
     res.json({ message: "Login successful", token });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
+
 
 
 const verifyToken = (req, res, next) => {
@@ -105,6 +118,9 @@ app.get("/profile", verifyToken, async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
+
+
+
 
 const PORT = process.env.PORT;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
