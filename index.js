@@ -6,7 +6,6 @@ import dotenv from "dotenv";
 import cors from "cors";
 import twilio from "twilio";
 dotenv.config();
-
 const app = express();
 
 app.use(express.json());
@@ -36,7 +35,7 @@ mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB Connected"))
   .catch((err) => console.error(err));
 
-
+//userSchema
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true,default: "Username" },
   password: { type: String, required: true,default: "Password" },
@@ -46,6 +45,15 @@ const userSchema = new mongoose.Schema({
   role: { type: Number, default: 1 },
   lastLoginDate: { type: Date, default: null },
   userPrivilege: { type: String, enum: ["free", "premium"], default: "free" },
+  balance: { type: Number, default: 0 }
+});
+
+// Transaction Schema
+const transactionSchema = new mongoose.Schema({
+  senderId: { type: String, required: true },
+  receiverId: { type: String, required: true },
+  amount: { type: Number, required: true },
+  date: { type: Date, default: Date.now }
 });
 
 userSchema.pre("save", async function (next) {
@@ -55,13 +63,13 @@ userSchema.pre("save", async function (next) {
 });
 
 const User = mongoose.model("User", userSchema);
-
+const Transaction = mongoose.model("Transaction", transactionSchema);
 
 const generateToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: "1h" });
 };
 
-
+//register
 app.post("/register", async (req, res) => {
   try {
     const { username, phoneNumber, password, role, userPrivilege } = req.body;
@@ -81,6 +89,7 @@ app.post("/register", async (req, res) => {
   }
 });
 
+//login
 app.post("/login", async (req, res) => {
   try {
     const { phoneNumber } = req.body;
@@ -95,6 +104,9 @@ app.post("/login", async (req, res) => {
       user = new User({
         phoneNumber:`${phoneNumber}`
       });
+      await user.save();
+    }else {
+      user.lastLoginDate = new Date();
       await user.save();
     }
 
@@ -111,7 +123,7 @@ app.post("/login", async (req, res) => {
   }
 });
 
-
+//verifyToken
 const verifyToken = (req, res, next) => {
   const token = req.header("Authorization");
 
@@ -129,8 +141,7 @@ const verifyToken = (req, res, next) => {
   }
 };
 
-
-
+//profile
 app.get("/profile", verifyToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -144,11 +155,69 @@ app.get("/profile", verifyToken, async (req, res) => {
 });
 
 
+//transaction
+app.post("/transaction", async (req, res) => {
+  try {
+    const { senderId, receiverId, amount } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(senderId) || !mongoose.Types.ObjectId.isValid(receiverId)) {
+      return res.status(400).json({ message: "Invalid sender or receiver ID" });
+    }
+
+    const sender = await User.findById(senderId);
+    const receiver = await User.findById(receiverId);
+
+    if (!sender || !receiver) {
+      return res.status(400).json({
+        message: !sender && !receiver
+          ? "Both sender and receiver do not exist"
+          : !sender
+          ? "Sender does not exist"
+          : "Receiver does not exist"
+      });
+    }
+
+    if (sender.balance < amount) {
+      return res.status(400).json({ message: "Insufficient balance" });
+    }
+
+    sender.balance -= amount;
+    receiver.balance += amount;
+
+    await sender.save();
+    await receiver.save();
+
+    const transaction = new Transaction({ senderId, receiverId, amount });
+    await transaction.save();
+
+    res.json({ message: "Transaction successful" });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+//Transaction History
+app.get("/transactions/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const transactions = await Transaction.find({
+      $or: [{ senderId: userId }, { receiverId: userId }]
+    }).sort({ date: -1 });
+
+    if (!transactions.length) {
+      return res.status(404).json({ message: "No transactions found" });
+    }
+
+    res.json(transactions);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 
 
 const PORT = process.env.PORT;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
-
-
-
