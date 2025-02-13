@@ -10,7 +10,6 @@ const router = express.Router();
 router.post("/login", async (req, res) => {
   try {
     let { phoneNumber } = req.body;
-
     phoneNumber = phoneNumber.startsWith("+91") ? phoneNumber : `+91${phoneNumber}`;
 
     let user = await User.findOne({ phoneNumber });
@@ -28,16 +27,20 @@ router.post("/login", async (req, res) => {
 
     const otpResponse = await sendOTPWhatsApp(phoneNumber, otp);
 
-    res.json(otpResponse);
+    if (!otpResponse.success) {
+      return res.status(400).json(otpResponse);
+    }
 
+    return res.status(200).json(otpResponse); 
 
   } catch (error) {
     if (error.name === "ValidationError") {
-      return res.status(400).json({message: error.errors.phoneNumber.message});
+      return res.status(400).json({ message: error.errors.phoneNumber.message });
     }
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 });
+
 
 // Verify OTP
 router.post("/verify-otp", async (req, res) => {
