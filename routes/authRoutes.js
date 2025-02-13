@@ -26,8 +26,10 @@ router.post("/login", async (req, res) => {
     user.lastLoginDate = new Date();
     await user.save();
 
-    await sendOTPWhatsApp(phoneNumber, otp);
-    res.json({ message: "OTP sent successfully" });
+    const otpResponse = await sendOTPWhatsApp(phoneNumber, otp);
+
+    res.json(otpResponse);
+
 
   } catch (error) {
     if (error.name === "ValidationError") {
