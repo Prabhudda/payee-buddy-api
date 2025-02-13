@@ -1,7 +1,7 @@
 import express from "express";
 import User from "../models/User.js";
 import Transaction from "../models/Transaction.js";
-
+import { verifyToken } from "../utils/auth.js";
 const router = express.Router();
 
 // Make a Transaction
@@ -35,7 +35,7 @@ router.post("/", async (req, res) => {
 });
 
 //Transaction History
-router.get("/history/:userId", async (req, res) => {
+router.get("/history/:userId", verifyToken, async (req, res) => {
   try {
     const { userId } = req.params;
 
