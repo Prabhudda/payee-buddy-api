@@ -16,4 +16,16 @@ router.get("/profile", verifyToken, async (req, res) => {
   }
 });
 
+//user details by id
+router.get("/info/:id", async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select("username");
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
 export default router;
