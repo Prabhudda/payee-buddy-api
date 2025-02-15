@@ -34,20 +34,42 @@ router.post("/", async (req, res) => {
   }
 });
 
-//Transaction History
-router.get("/history/:userId", verifyToken, async (req, res) => {
+// //Transaction History
+// router.get("/history/:userId", verifyToken, async (req, res) => {
+//   try {
+//     const { userId } = req.params;
+
+//     const transactions = await Transaction.find({
+//       $or: [{ senderId: userId }, { receiverId: userId }]
+//     }).sort({ date: -1 });
+
+//     res.json(transactions);
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// });
+
+
+router.get("/history/:userId",verifyToken, async (req, res) => {
   try {
     const { userId } = req.params;
+    const limit = parseInt(req.query.limit) || 10; 
+    const offset = parseInt(req.query.offset) || 0;
 
     const transactions = await Transaction.find({
       $or: [{ senderId: userId }, { receiverId: userId }]
-    }).sort({ date: -1 });
+    })
+    .sort({ date: -1 })
+    .skip(offset)
+    .limit(limit);
 
     res.json(transactions);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
+
+
 
 //reward
 router.post("/reward/:senderId", async (req, res) => {
