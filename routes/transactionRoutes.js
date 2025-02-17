@@ -9,6 +9,10 @@ router.post("/", async (req, res) => {
   try {
     const { senderId, receiverId, amount } = req.body;
 
+    if(amount<1){
+      return res.status(400).json({ message: "The sending amount must be at least $1" });
+    }
+
     const sender = await User.findById(senderId);
     const receiver = await User.findById(receiverId);
     if (!sender || !receiver) {
@@ -27,7 +31,7 @@ router.post("/", async (req, res) => {
     const transaction = new Transaction({ senderId, receiverId, amount });
     await transaction.save();
 
-    res.json({ message: "Transaction successful" });
+    res.status(200).json({ message: "Transaction successful" });
 
   } catch (error) {
     res.status(500).json({ error: error.message });
