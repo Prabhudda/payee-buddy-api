@@ -107,7 +107,7 @@ router.post("/reward/:senderId", async (req, res) => {
       return res.status(400).json({ message: "Sender not found" });
     }
 
-    sender.balance += 2;
+    sender.balance += 1;
     await sender.save();
 
     res.json({ message: "Reward added successfully", newBalance: sender.balance });
@@ -158,10 +158,12 @@ router.get("/summary/:userId", async (req, res) => {
         break;
 
       case "month":
+        matchCondition.$expr = { $eq: [{ $year: "$date" }, currentYear] }; 
         dateFormat = { $dateToString: { format: "%Y-%m", date: "$date" } };
         break;
 
       case "quarter":
+        matchCondition.$expr = { $eq: [{ $year: "$date" }, currentYear] };
         dateFormat = {
           $concat: [
             { $toString: { $year: "$date" } },
