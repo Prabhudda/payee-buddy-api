@@ -4,6 +4,8 @@ const videoSchema = new mongoose.Schema({
   videoUrl: { type: String, required: true, unique: true },
   thumbnail: { type: String, required: true },
   watchedBy: { type: [String], default: [] }, 
+  date: { type: Date, default: Date.now },
+  sponsored: { type: Boolean, default: false } 
 });
 
 const Video = mongoose.model("Video", videoSchema);

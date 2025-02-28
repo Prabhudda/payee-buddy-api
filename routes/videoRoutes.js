@@ -30,11 +30,36 @@ router.post("/", async (req, res) => {
   });
 
 //unwatched videos by id
+// router.get("/unwatched/:userId", async (req, res) => {
+//   try {
+//     const { userId } = req.params;
+//     const unwatchedVideos = await Video.find({ watchedBy: { $ne: userId } });
+//     res.status(200).json(unwatchedVideos);
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// });
+
 router.get("/unwatched/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
-    const unwatchedVideos = await Video.find({ watchedBy: { $ne: userId } });
-    res.status(200).json(unwatchedVideos);
+    const { filterType } = req.query;
+    let filter = {};
+
+    if (filterType === "All") {
+      filter.watchedBy = { $ne: userId };
+    } else if (filterType === "Sponsored") {
+      filter.sponsored = true;
+    } else if (filterType === "Watched") {
+      filter.watchedBy = userId;
+    } else if (filterType === "New") {
+      filter = {
+        watchedBy: { $ne: userId },
+      };
+    }
+
+    const videos = await Video.find(filter).sort({ date: -1 });
+    res.status(200).json(videos);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
